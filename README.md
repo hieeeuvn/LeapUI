@@ -199,11 +199,14 @@ the UI. `tools/make_test_thumb.py` generates a fake `.res` box-art file.
   glue that LeapUI builds on.
 - **Slot** — carousel/slot UX (L/R shelf, insert/eject, theme housing/recess)
   that inspired the LeapUI shelf.
-- **Desoxyn** — debugging the boot-loop: tracing `R31` (`$ra`) to locate the
-  faulting function in `core.elf` and identifying the core-side cause.
+- **Desoxyn** — author of **NocturnalRTOS**; also helped debug the boot loop:
+  tracing `R31` (`$ra`) to locate the faulting function in `core.elf` and
+  identifying the core-side cause.
 - **AxelGarciaK (axgdev)** — pointing out `RETRO_ENVIRONMENT_RUN_EMULATOR` +
   `dartos.h` (why the core fell into `SHUTDOWN`), and steering the build away
   from the experimental zig/musl path.
+- **Freebuff (AI)** — the coding agent used to build and debug this project
+  (source edits, smoke tests, and this repo's tooling).
 
 ## License
 
