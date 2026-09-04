@@ -1,0 +1,40 @@
+name: build-leapui
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: alpine:3.23
+    steps:
+      - uses: actions/checkout@v4
+      - name: deps
+        run: apk add --no-cache make bash curl gcc musl-dev tar xz git
+      - name: toolchain
+        run: make toolchain
+      - name: build dartos (GB300/SF2000)
+        run: make gb300 -j$(nproc)
+      - name: build unix (sanity)
+        run: make pc -j$(nproc)
+      - name: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: leapui-${{ github.sha }}
+          path: |
+            build/dartos/leapui.mars
+            build/dartos/leapui.hcrtos
+            build/dartos/_libretro_dartos.a
+            build/dartos/core.elf.map
+            build/unix/leapui_libretro.so
+      - name: release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/dartos/leapui.mars
+            build/dartos/leapui.hcrtos

@@ -1,0 +1,29 @@
+# --- build outputs (make pc / make gb300) ---
+build/
+
+# --- toolchain (tai lai bang: make toolchain) ---
+x-tools/
+toolchain/
+
+# --- thu muc rieng tu / staging noi bo (khong thuoc source public) ---
+DARTOS/
+DARTOS*/
+NocturnalRTOS/
+Project/
+output/
+
+# --- Freebuff tool state ---
+.freebuff/
+
+# --- artifact / object cu con sot o root (do make ban cu de lai) ---
+*.o
+*.a
+*.so
+*.elf
+*.elf.map
+*.mars
+*.hcrtos
+nul
+
+# --- frame raw sinh ra khi chay smoke test (png/html da duyet nhu screenshot mau) ---
+tools/frame_ui.rgb565
