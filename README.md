@@ -1,3 +1,4 @@
+![Banner](/tools/frame_ui.png)
 # LeapUI
 
 A minimal **GBA-only frontend core** (libretro) for **NocturnalRTOS / DartOS** handhelds
