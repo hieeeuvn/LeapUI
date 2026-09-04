@@ -43,8 +43,9 @@ backward compatibility).
   `theme.c` parses the file but rendering still uses the fixed palette in
   `render.h` (`C_BG*`/`C_BORDER`/`C_HOUSING`...) — `theme_housing()/...` are
   not wired into the renderer yet.
-- **Persistence + logs**: `last_cart.txt` and `leapui.log` under
-  `system/assets/LeapUI/` (fallback `HCRTOS/assets/LeapUI/`) recording
+- **Persistence + logs**: `last_cart.txt` (last game for resume) lives under
+  `system/assets/LeapUI/`; `leapui.log` follows the firmware convention and is
+  written to `system/logs/` (next to `Phobos.log`), recording
   `roms/gba/assets`, `shelf_scan`, `queue_insert`, `ROM/CORE check` and
   `RUN_EMULATOR ret`.
 
@@ -76,13 +77,13 @@ SD:/
   system/Phobos/cores/leapui.mars      <- core (make gb300 -> build/dartos/leapui.mars, copy here)
   system/Phobos/cores/gpSP.mars        <- game core - from Argent-Cores (legacy: HCRTOS/cores/gpSP.hcrtos)
   system/bios/gba_bios.bin
-  system/assets/LeapUI/theme.txt, leapui.log, last_cart.txt
+  system/assets/LeapUI/theme.txt, last_cart.txt
   system/saves/*.srm, *.state
   system/configs/dartos.opt            <- make install writes: hcrtos_core_path="leapui"
-  system/logs/Phobos.log
+  system/logs/Phobos.log, leapui.log   <- leapui.log next to the firmware log
   # legacy kept for compatibility:
   HCRTOS/cores/leapui.mars + .hcrtos
-  HCRTOS/assets/LeapUI/theme.txt, leapui.log
+  HCRTOS/assets/LeapUI/theme.txt
 ```
 
 ### Box art (.res/.rgb565)
@@ -168,18 +169,6 @@ frontend (`tools/smoke_libretro.c`), exercises a full scan + one `A` press
 frame to `tools/frame_ui.png` (via `tools/rgb565_to_png.py`) so you can eyeball
 the UI. `tools/make_test_thumb.py` generates a fake `.res` box-art file.
 
-## Comparison
-
-|  | FrogUI | Slot | LeapUI |
-|---|---|---|---|
-| Scan | /ROMS/* every system | /Games/*.gba | /ROMS/Game Boy Advance/*.gba only |
-| UI | vertical list | carousel chrome | green-accent carousel 200x104 + 32x64 sides + 8x8 font + animation |
-| Input | Up/Down, A/B, Select | L/R, tap/hold A, MENU | L/R, tap/hold A 500ms, SELECT About |
-| Box art | .res/*.rgb565 + WQW | Labels 196x86 | .res/*.rgb565, any standard size, fit in GBA-sticker-ratio banner |
-| Theme | theme.c | System/theme.txt | system/assets/LeapUI/theme.txt + HCRTOS fallback |
-| Launch | RUN_EMULATOR | mGBA directly | RUN_EMULATOR core=gpSP (like FrogUI; `dartos.h` include fixed) |
-| Output | .hcrtos | - | .mars (new) + .hcrtos (compat) |
-
 ## Development notes
 
 - `src/leapui.c` holds `retro_init` (build paths + font init), the run-game
@@ -200,8 +189,8 @@ the UI. `tools/make_test_thumb.py` generates a fake `.res` box-art file.
   shim on Linux would misread `d_name`).
 - `src/mmap_stub.c` is a leftover from an abandoned zig/musl build path and is
   **not compiled** by the Makefile.
-- Logs go to `system/assets/LeapUI/leapui.log` (fallback
-  `HCRTOS/assets/LeapUI/`) for debugging boot loops.
+- `leapui.log` is written to `system/logs/` (firmware convention, next to
+  `Phobos.log`) for debugging boot loops.
 
 ## License
 

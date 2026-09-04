@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """rgb565_to_png.py <input.rgb565> <output.png> [scale] [w] [h]
 
-Chuyen raw RGB565 little-endian -> PNG (chi dung stdlib). Mac dinh 320x240, scale 3 de de nhin.
+Convert raw little-endian RGB565 to PNG (stdlib only). Defaults to 320x240, scale 3 for readability.
 """
 import struct, sys, zlib
 
@@ -14,7 +14,7 @@ def main():
     raw = open(src, "rb").read()
     expect = w * h * 2
     if len(raw) < expect:
-        print("thieu du lieu: %d < %d" % (len(raw), expect), file=sys.stderr)
+        print("not enough data: %d < %d" % (len(raw), expect), file=sys.stderr)
         sys.exit(1)
 
     def px(i):

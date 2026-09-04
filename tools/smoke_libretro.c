@@ -1,13 +1,13 @@
 /*
- * smoke_libretro.c - frontend libretro toi gian de smoke-test core build PC (Linux/WSL).
+ * smoke_libretro.c - a minimal libretro frontend to smoke-test the PC core build (Linux/WSL).
  *
  * Build:
  *   gcc -O0 -g -Wall -I<repo>/include tools/smoke_libretro.c -o /tmp/smoke_libretro -ldl
  *
- * Chay (sandbox phai co ROMS/"Game Boy Advance" chua file .gba + system/assets/LeapUI/):
- *   /tmp/smoke_libretro <duong-dan>/leapui_libretro.so <sandbox>
+ * Run (the sandbox must contain ROMS/"Game Boy Advance" with .gba files + system/logs/):
+ *   /tmp/smoke_libretro <path-to>/leapui_libretro.so <sandbox>
  *
- * Core tu ghi log vao <sandbox>/system/assets/LeapUI/leapui.log (dong shelf_scan ... count=N).
+ * The core writes its own log to <sandbox>/system/logs/leapui.log (shelf_scan ... count=N lines).
  */
 
 #include <stdio.h>
@@ -66,7 +66,7 @@ static void input_poll_cb(void) { g_polls++; }
 static int16_t input_state_cb(unsigned port, unsigned device, unsigned index, unsigned id)
 {
    (void)port; (void)device; (void)index;
-   /* mo phong bam A 1 frame (poll #3) -> kich hoat queue_insert + ROM/CORE check trong log */
+   /* simulate pressing A for one frame (poll #3) -> triggers queue_insert + ROM/CORE check in the log */
    if (g_polls == 3 && id == RETRO_DEVICE_ID_JOYPAD_A) return 1;
    return 0;
 }
@@ -74,14 +74,14 @@ static int16_t input_state_cb(unsigned port, unsigned device, unsigned index, un
 #define LOAD(sym)                                                               \
    do {                                                                          \
       *(void **)(&sym) = dlsym(core, #sym);                                      \
-      if (!sym) { fprintf(stderr, "[FAIL] thieu symbol %s: %s\n", #sym, dlerror()); return 2; } \
+      if (!sym) { fprintf(stderr, "[FAIL] missing symbol %s: %s\n", #sym, dlerror()); return 2; } \
    } while (0)
 
 int main(int argc, char **argv)
 {
    if (argc < 3)
    {
-      fprintf(stderr, "dung: %s <core.so> <sandbox> [framedump.rgb565]\n", argv[0]);
+      fprintf(stderr, "usage: %s <core.so> <sandbox> [framedump.rgb565]\n", argv[0]);
       return 2;
    }
 
@@ -143,9 +143,9 @@ int main(int argc, char **argv)
    printf("[OK] retro_run x%d (video cb: %d frame, %dx%d pitch=%d, input poll x%d)\n",
           FRAMES, g_frame, g_fb_w, g_fb_h, g_fb_pitch, g_polls);
    if (g_frame == 0)
-   { fprintf(stderr, "[FAIL] core khong goi video_refresh\n"); return 4; }
+   { fprintf(stderr, "[FAIL] core never called video_refresh\n"); return 4; }
 
-   /* dump frame RGB565 cuoi cung (truoc khi core giai phong framebuffer) */
+   /* dump the last RGB565 frame (before the core frees its framebuffer) */
    if (argc > 3 && g_fb_data && g_fb_pitch == g_fb_w * 2)
    {
       FILE *d = fopen(argv[3], "wb");
@@ -154,7 +154,7 @@ int main(int argc, char **argv)
          if (fwrite(g_fb_data, (size_t)g_fb_w * g_fb_h * 2, 1, d) == 1)
             printf("[dump] %s (%dx%d RGB565)\n", argv[3], g_fb_w, g_fb_h);
          else
-            fprintf(stderr, "[WARN] ghi frame that bai\n");
+            fprintf(stderr, "[WARN] frame write failed\n");
          fclose(d);
       }
    }
@@ -163,11 +163,11 @@ int main(int argc, char **argv)
    retro_deinit();
    dlclose(core);
 
-   /* log cua core nam ngay trong assets dir */
+   /* the core logs to <sandbox>/system/logs/leapui.log (firmware convention) */
    char log_path[600];
-   snprintf(log_path, sizeof(log_path), "%s/leapui.log", g_assets);
+   snprintf(log_path, sizeof(log_path), "%s/system/logs/leapui.log", argv[2]);
    FILE *f = fopen(log_path, "rb");
-   if (!f) { fprintf(stderr, "[WARN] khong doc duoc %s\n", log_path); return 0; }
+   if (!f) { fprintf(stderr, "[WARN] cannot read %s\n", log_path); return 0; }
    char line[512];
    printf("---- %s ----\n", log_path);
    while (fgets(line, sizeof(line), f)) printf("  %s", line);

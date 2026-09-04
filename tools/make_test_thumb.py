@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """make_test_thumb.py <out.rgb565> [w] [h]
 
-Tao anh .res gia kieu boxart (gradient + vien + duong cheo) de test thumb_load.
-Khong dung pixel 0x0000 (den tinh khiet) -> khong bi trong suot khi ve len banner.
-Mac dinh 220x120 (1 trong cac size thumb_load nhan).
+Create a fake .res box-art image (gradient + border + diagonal stripes) to exercise thumb_load.
+Avoids pure-black 0x0000 pixels so it is not treated as transparent on the banner.
+Defaults to 220x120 (one of the sizes thumb_load accepts).
 """
 import struct, sys
 
@@ -15,12 +15,12 @@ def main():
     buf = bytearray()
     for y in range(h):
         for x in range(w):
-            # nen: gradient trai do -> phai xanh duong
+            # background: gradient from red (left) to blue (right)
             t = x / max(w - 1, 1)
             r = int(235 - 175 * t)
             g = int(60 + 90 * t)
             b = int(60 + 150 * t)
-            # vien trang day 2
+            # 2px white border
             if x < 2 or y < 2 or x >= w - 2 or y >= h - 2:
                 r, g, b = 245, 245, 245
             # 2 duong cheo (xanh la den-vua / trang) de de nhan

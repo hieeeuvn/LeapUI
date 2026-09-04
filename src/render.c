@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 uint16_t rgb_hex(uint32_t h){ uint8_t r=(h>>16)&0xFF,g=(h>>8)&0xFF,b=h&0xFF; return (r>>3)<<11|(g>>2)<<5|(b>>3); }
-void render_clear(uint16_t *fb){ uint16_t c = C_BG_TOP; // nen dong nhat 1 mau (bo band xanh nua duoi)
+void render_clear(uint16_t *fb){ uint16_t c = C_BG_TOP; // uniform single-color background (bright lower band removed)
     for(int y=0;y<SCREEN_H;y++) for(int x=0;x<SCREEN_W;x++) fb[y*SCREEN_W+x]=c; }
 void render_fill(uint16_t *fb,int x,int y,int w,int h,uint16_t c){ for(int py=y;py<y+h;py++) for(int px=x;px<x+w;px++) if(px>=0&&px<SCREEN_W&&py>=0&&py<SCREEN_H) fb[py*SCREEN_W+px]=c; }
 void render_rect_border(uint16_t *fb,int x,int y,int w,int h,uint16_t c){
@@ -29,17 +29,16 @@ void render_backdrop(uint16_t *fb){
     render_clear(fb);
     render_header(fb);
     render_footer(fb);
-    // chan mo hinh
 }
 static int anim_tick=0;
 void render_center_banner(uint16_t *fb, Thumb *th, const char *label){
     anim_tick++;
-    /* khung cart theo ti le sticker GBA 43:22 (508x260): long 196x100, banner 200x104 */
+    /* cart frame at the GBA sticker ratio 43:22 (508x260): inner area 196x100, banner 200x104 */
     int bw=200, bh=104;
     int bx=(SCREEN_W-bw)/2, by=40;
-    // nhap nhay vien nhe
+    // gentle blinking border
     uint16_t border = (anim_tick%60<30)? C_BORDER : 0x07E0;
-    // animation truot nhe theo scroll
+    // subtle slide animation following the scroll
     int slide = (anim_tick%120<60)? 1 : -1;
     bx += slide;
     render_rect_border(fb,bx,by,bw,bh,border);
@@ -50,18 +49,18 @@ void render_center_banner(uint16_t *fb, Thumb *th, const char *label){
         int tw=font_measure(l1);
         font_draw(fb,SCREEN_W,SCREEN_H,bx+(bw-tw)/2, by+bh/2-6, l1, C_BORDER);
     }
-    // ten rom - chi 1 dong 8px, cat gon
+    // rom name - a single 8px line, truncated
     if(label){
         char tmp[28]; strncpy(tmp,label,27); tmp[27]=0;
-        // cat va chi hien 1 dong
+        // truncate to one line
         if(font_measure(tmp) > bw-8){
             tmp[18]='.'; tmp[19]='.'; tmp[20]='.'; tmp[21]=0;
         }
         int tw=font_measure(tmp);
-        // box nho 10px cao, khong chiem nua man
+        // small 10px-tall box; does not take half the screen
         int tx=bx+(bw-tw)/2;
         int ty=by+bh+6;
-        // nen mo cho chu de doc (cung mau nen -> chi con vien + chu)
+        // backing so the text reads (same color as the background -> only border + text show)
         render_fill(fb, tx-2, ty-1, tw+4, 10, C_BG_TOP);
         render_rect_border(fb, tx-2, ty-1, tw+4, 10, C_BORDER);
         font_draw(fb,SCREEN_W,SCREEN_H,tx, ty, tmp, C_TEXT);
@@ -71,7 +70,7 @@ void render_side_preview(uint16_t *fb,int side, Thumb *th, const char *label){
     int sw=32, sh=64;
     int sx = (side<0)? 2 : SCREEN_W-sw-2;
     int sy = (SCREEN_H-sh)/2;
-    // animation nhe len xuong
+    // gentle vertical bob
     int bob = (anim_tick+ (side*20))%60;
     if(bob>30) bob=60-bob;
     sy += bob/10;
@@ -79,7 +78,7 @@ void render_side_preview(uint16_t *fb,int side, Thumb *th, const char *label){
     if(th && th->data){
         thumb_draw_scaled(fb,th,sx+2,sy+2,sw-4,sh-4);
     } else if(label){
-        // chi hien ki tu dau, khong chu
+        // first character only
         char c[2]={label[0],0};
         font_draw(fb,SCREEN_W,SCREEN_H,sx+12,sy+sh/2-4,c,C_DIM);
     }
@@ -102,7 +101,7 @@ bool thumb_load(const char *rom_path, Thumb *out){
     FILE *fp=fopen(tp,"rb");
     if(!fp) return false;
     fseek(fp,0,SEEK_END); long sz=ftell(fp); fseek(fp,0,SEEK_SET);
-    /* Kich thuoc chuan FrogUI (160x160/200x200, wide 250x200) + GBA label 43:22 (196x100/508x260...) + size khac */
+    /* standard FrogUI sizes (160x160/200x200, wide 250x200) + GBA label 43:22 (196x100) + other sizes */
     int known[][2]={{64,64},{128,128},{144,208},{160,160},{196,86},{196,100},{200,200},{220,120},{250,200},{320,240}};
     for(int i=0;i<10;i++){
         int w=known[i][0], h=known[i][1];
@@ -118,7 +117,7 @@ bool thumb_load(const char *rom_path, Thumb *out){
 }
 void thumb_free(Thumb *t){ if(t&&t->data){ free(t->data); t->data=NULL; t->w=0; t->h=0; } }
 void thumb_draw_scaled(uint16_t *fb, Thumb *t,int x,int y,int w,int h){
-    /* fit giu ty le (khong beo hinh), can giua trong o (w x h); pixel 0x0000 = trong suot */
+    /* fit keeping the aspect ratio (no distortion), centered in the (w x h) slot; 0x0000 pixels are transparent */
     if(!fb||!t||!t->data) return;
     double k1=(double)w/t->w, k2=(double)h/t->h;
     double s = (k1<k2)? k1 : k2;

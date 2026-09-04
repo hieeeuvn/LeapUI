@@ -5,7 +5,7 @@
 #include <stddef.h>
 #define SCREEN_W 320
 #define SCREEN_H 240
-// Palette trong suot xanh la
+// Green-accent palette
 #define C_BG_TOP    0x0A24 // #0a2a0a
 #define C_BG_BOT    0x0421 // #082108
 #define C_BG        C_BG_TOP

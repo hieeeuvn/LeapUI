@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# smoke_run.sh - chay trong WSL: rebuild pc+gb300 roi smoke-test core PC
+# smoke_run.sh - run inside WSL: rebuild pc+gb300, then smoke-test the PC core
 #   wsl bash -lc 'cd "<repo>" && bash tools/smoke_run.sh'
 set -e
 cd "$(dirname "$0")/.."
@@ -13,7 +13,7 @@ echo "REBUILD-OK pc+gb300 (leapui.mars $(wc -c < build/dartos/leapui.mars) bytes
 echo "== SANDBOX =="
 S=/tmp/leapui_smoke
 rm -rf "$S"
-mkdir -p "$S/ROMS/Game Boy Advance" "$S/system/assets/LeapUI"
+mkdir -p "$S/ROMS/Game Boy Advance" "$S/system/assets/LeapUI" "$S/system/logs"
 head -c 4096 /dev/urandom > "$S/ROMS/Game Boy Advance/Pokemon Fire Red.gba"
 head -c 2048 /dev/urandom > "$S/ROMS/Game Boy Advance/zelda minish.gba"
 mkdir -p "$S/ROMS/Game Boy Advance/.res"

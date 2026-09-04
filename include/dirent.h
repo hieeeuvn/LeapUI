@@ -1,7 +1,7 @@
-/* dirent shim cho bare-metal (dartos): frontend_functions.c tu implement opendir/readdir
-   theo dung layout struct dirent ben duoi (d_type truoc, d_name sau).
-   Tren host Linux/PC (glibc/musl) struct dirent cua OS co layout KHAC (d_name o offset ~19),
-   nen phai dung dirent.h that cua he dieu hanh, khong duoc dung shim nay. */
+/* Bare-metal (dartos) dirent shim: frontend_functions.c implements opendir/readdir
+   against the exact struct dirent layout below (d_type first, d_name after).
+   On Linux/PC hosts (glibc/musl) the OS struct dirent has a DIFFERENT layout
+   (d_name at offset ~19), so the real system <dirent.h> must be used - never this shim. */
 #if defined(__linux__)
 #include_next <dirent.h>
 #else

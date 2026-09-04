@@ -2,7 +2,7 @@
  * LeapUI - Minimal GBA-only frontend for NocturnalRTOS / DartOS
  * Inspired by FrogUI (directory / input / libretro wrapper) and Slot (shelf UX).
  *
- * - Scans <ROMS>/Game Boy Advance/*.gba, fallback <ROMS>/ (toi da 512)
+ * - Scans <ROMS>/Game Boy Advance/*.gba, fallback <ROMS>/ (up to 512)
  * - Horizontal Slot-style carousel: L/R or Left/Right browses, center cart focused
  * - Tap A = resume (gpsp savestate), Hold A 500ms = clean boot
  * - Runs gpsp via DARTOS RETRO_ENVIRONMENT_RUN_EMULATOR
@@ -88,17 +88,19 @@ static uint32_t now_ms(void){
 #endif
 }
 void leapui_log(const char *fmt, ...){
-    char path[512]; snprintf(path,sizeof(path),"%s/leapui.log", assets_dir);
+    // Follow the firmware convention: <root>/system/logs/leapui.log (next to Phobos.log).
+    // <root> is the SD root, derived as the parent of the ROMS directory.
+    char path[512];
+    char root[256];
+    strncpy(root, "/media/mmcblk0p2", sizeof(root)-1); root[sizeof(root)-1]=0;
+    const char *slash=strrchr(roms_path,'/');
+    if(slash && slash!=roms_path){
+        size_t n=(size_t)(slash-roms_path);
+        if(n<sizeof(root)-1){ memcpy(root, roms_path, n); root[n]=0; }
+    }
+    snprintf(path,sizeof(path),"%s/system/logs/leapui.log", root);
     FILE *f=fopen(path,"a");
-    if(!f){
-        snprintf(path,sizeof(path),"/media/mmcblk0p2/system/assets/LeapUI/leapui.log");
-        f=fopen(path,"a");
-    }
-    if(!f){
-        snprintf(path,sizeof(path),"/media/mmcblk0p2/HCRTOS/assets/LeapUI/leapui.log");
-        f=fopen(path,"a");
-        if(!f) return;
-    }
+    if(!f) return;
     va_list ap; va_start(ap,fmt); vfprintf(f,fmt,ap); va_end(ap);
     fprintf(f,"\n"); fclose(f);
 }
@@ -114,7 +116,7 @@ static void build_paths(void){
     {
         const char *save=NULL;
         if(environ_cb && environ_cb(RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY, &save) && save){
-            // vi du: save la /media/mmcblk0p2/Saves -> parent la /media/mmcblk0p2
+            // e.g. save = /media/mmcblk0p2/Saves -> parent = /media/mmcblk0p2
             char tmp[256]; strncpy(tmp, save, sizeof(tmp)-1);
             char *slash=strrchr(tmp,'/');
             if(slash) *slash=0;
@@ -123,7 +125,7 @@ static void build_paths(void){
     }
     // trim trailing slash
     size_t l=strlen(roms_path); while(l>1 && roms_path[l-1]=='/'){ roms_path[l-1]=0; l--; }
-    // DartOS dong bo: dung "Game Boy Advance" mac dinh (khop console_mappings.opt), khong dung stat de tranh syscall tren HCRTOS
+    // DartOS convention: keep the "Game Boy Advance" default (matches console_mappings.opt); avoid stat() to dodge syscalls on HCRTOS
     snprintf(gba_path, sizeof(gba_path), "%s/Game Boy Advance", roms_path);
 
     const char *core_assets=NULL;
@@ -187,7 +189,7 @@ static void queue_insert(bool clean){
         // gpsp states live in Saves/*.srm? DartOS uses /Saves/<stem>.state
         // Try unlink common locations, ignore errors
         char state_path[512];
-        // parent lay tu roms_path, thu <root>/Saves/<stem>.state
+        // derive the parent from roms_path, then try <root>/Saves/<stem>.state
         char *slash=strrchr(roms_path,'/');
         char parent[256]="";
         if(slash){ strncpy(parent, roms_path, slash-roms_path); parent[slash-roms_path]=0; }
@@ -260,7 +262,7 @@ static void handle_input_about(void){
     prev_a=a; prev_b=b;
 }
 
-// ---- render trong suot ----
+// ---- shelf rendering ----
 static void render_shelf(void){
     render_backdrop(framebuffer);
     if(shelf.count==0){
@@ -274,7 +276,7 @@ static void render_shelf(void){
     if(shelf.count>1){
         int left_idx = (shelf.index-1+shelf.count)%shelf.count;
         int right_idx = (shelf.index+1)%shelf.count;
-        // khong load thumb cho side de nhe, chi label
+        // no thumbs for the side tiles (keep it light); label only
         render_side_preview(framebuffer, -1, NULL, shelf.carts[left_idx].stem);
         render_side_preview(framebuffer,  1, NULL, shelf.carts[right_idx].stem);
     }
@@ -412,8 +414,8 @@ void retro_run(void){
     if(game_queued){
         game_queued=false;
         FILE *tr=fopen(game_name_buf,"rb"); leapui_log("ROM check %s exists=%d", game_name_buf, tr!=NULL); if(tr) fclose(tr);
-        FILE *tnew=fopen("/media/mmcblk0p2/system/Phobos/cores/gpSP.mars","rb"); leapui_log("CORE check gpSP.mars (system/Phobos, moi) exists=%d", tnew!=NULL); if(tnew) fclose(tnew);
-        FILE *told=fopen("/media/mmcblk0p2/HCRTOS/cores/gpSP.hcrtos","rb"); leapui_log("CORE check gpSP.hcrtos (HCRTOS, cu) exists=%d", told!=NULL); if(told) fclose(told);
+        FILE *tnew=fopen("/media/mmcblk0p2/system/Phobos/cores/gpSP.mars","rb"); leapui_log("CORE check gpSP.mars (system/Phobos, new) exists=%d", tnew!=NULL); if(tnew) fclose(tnew);
+        FILE *told=fopen("/media/mmcblk0p2/HCRTOS/cores/gpSP.hcrtos","rb"); leapui_log("CORE check gpSP.hcrtos (HCRTOS, legacy) exists=%d", told!=NULL); if(told) fclose(told);
         leapui_log("WRAP_RUN_GAME core=%s rom=%s", core_name_buf, game_name_buf);
         WRAP_RUN_GAME("/media/mmcblk0p2/ROMS/menu;m.gba", 0);
         leapui_log("WRAP_RUN_GAME returned");
