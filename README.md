@@ -1,121 +1,208 @@
-# LeapUI - Minimal GBA-only Frontend for NocturnalRTOS (DartOS)
+# LeapUI
 
-LeapUI là core **frontend** cho NocturnalRTOS/DartOS (HC32 B210 / SF2000, GB300) - lấy điều hướng từ **Slot** (carousel + insert/eject) và cách hoạt động/libretro wrapper từ **FrogUI**, nhưng chỉ **GBA (gpSP)** để tối giản.
+A minimal **GBA-only frontend core** (libretro) for **NocturnalRTOS / DartOS** handhelds
+(SF2000, GB300, DY19, ...). It borrows the libretro wrapper + `core_api` from
+**FrogUI**, the carousel/slot UX from **Slot**, and stays deliberately small:
+scan GBA ROMs, show a carousel with box art, launch the game through **gpSP**.
 
 ```
 FrogUI = libretro + RETRO_ENVIRONMENT_RUN_EMULATOR + filesystem
-Slot   = carousel L/R + SlotChrome + theme housing/recess
-LeapUI = FrogUI core_api + Slot shelf (GBA-only) + UI viền xanh
+Slot   = carousel L/R + slot chrome + theme housing/recess
+LeapUI = FrogUI core_api + Slot-style shelf (GBA only) + green-accent UI
 ```
 
-Cập nhật theo commit mới `2026-08`: `NocturnalRTOS`/`Argent-Loader`/`Argent-Cores` - output core giờ là **`.mars`** ở `system/Phobos/cores` (giữ `.hcrtos` cũ để tương thích).
+Built against the 2026-08 `NocturnalRTOS`/`Argent-Loader`/`Argent-Cores` line:
+the device core is now **`.mars`** at `system/Phobos/cores` (`.hcrtos` kept for
+backward compatibility).
 
-## Tính năng (bản mới)
+## Features
 
-- **GBA-only**: scan `ROMS/Game Boy Advance/*.gba` (chuẩn `console_mappings.opt` `Game Boy Advance = gpSP`); thư mục trống thì fallback quét thẳng `ROMS/` (tối đa 512 ROM)
-- **UI viền xanh**: nền đồng nhất màu tối, banner giữa `200x104` (lòng ảnh `196x100`, đúng tỉ lệ sticker GBA 43:22 = 508x260) viền nhấp nháy, hiện ảnh `.res/<tên rom>.rgb565` nếu có (nhận size chuẩn FrogUI 64/128/160/200/250x200 + size GBA label, **fit giữ tỉ lệ không bóp méo**), không có ảnh thì logo `GAMEBOY ADVANCED` + tên rom trong pill cao `10px`
-- **Side preview**: 2 ô `32x64` trái/phải bob nhẹ, chỉ hiện ký tự đầu, đã xóa chữ `*game khac`
-- **Animation**: viền banner nhấp nháy `60f`, trượt ngang `1px`, side bob `bob/10`, shelf spring `k=14 d=8`
-- **Font 8x8 bitmap ascii tự làm** (96 chars, không dùng `GamePocket` nữa) - `font.c` tự chứa, <60KB
-- **Điều hướng Slot**: `L/R` (hoặc `LEFT/RIGHT`) browse wrap; `A` (tap <500ms) = chọn game/resume, giữ `A` đủ 500ms = clean boot (xóa `Saves/<stem>.state` + `.state.auto`); `SELECT/START` = About (thoát bằng `A`/`B`); ở shelf thì `B` không có tác dụng
-- **Theme (sườn)**: `theme_load()` đọc `system/assets/LeapUI/theme.txt` (assets dir do frontend cấp qua `GET_CORE_ASSETS_DIRECTORY`, fallback stat `system/assets/LeapUI` -> `HCRTOS/assets/LeapUI`), key kiểu Slot: `housing`, `recess`, `opening`, `edge` + màu hex. **Lưu ý hiện trạng**: `theme.c` đã parse nhưng render vẫn dùng palette cố định trong `render.h` (`C_BG*`/`C_BORDER`/`C_HOUSING`...) — hàm `theme_housing()/...` chưa được nối vào render.
-- **Persist + log**: `last_cart.txt` + `leapui.log` ở `system/assets/LeapUI/` (fallback `HCRTOS/assets/LeapUI/`) ghi `roms/gba/assets`, `shelf_scan`, `queue_insert`, `ROM/CORE check`, `RUN_EMULATOR ret`
+- **GBA only**: scans `ROMS/Game Boy Advance/*.gba` (matches the
+  `console_mappings.opt` mapping `Game Boy Advance = gpSP`); falls back to
+  scanning `ROMS/` directly when the folder is empty (up to 512 ROMs).
+- **Green-accent UI**: uniform dark background, centered banner `200x104`
+  (image area `196x100`, matching the GBA cart sticker ratio 43:22 = 508x260)
+  with a blinking border; shows `ROMS/Game Boy Advance/.res/<rom>.rgb565` box
+  art when present (any standard FrogUI size 64/128/160/200/250x200 plus the
+  GBA label size, **fit without distortion**); otherwise a `GAMEBOY ADVANCED`
+  logo + ROM name pill (`10px` tall).
+- **Side preview**: two `32x64` tiles (left/right) gently bobbing, showing the
+  first character of the neighbor ROM.
+- **Animation**: blinking banner border (`60f`), `1px` horizontal slide, side
+  bob (`bob/10`), springy shelf (`k=14 d=8`).
+- **Bundled 8x8 bitmap font** (96 ASCII chars, no external font file) in
+  `font.c`, <60 KB.
+- **Slot-style navigation**: `L/R` (or `LEFT/RIGHT`) wraps around the shelf;
+  `A` tap (<500 ms) = start/resume game; `A` hold ≥500 ms = clean boot
+  (removes `Saves/<stem>.state` + `.state.auto`); `SELECT/START` = About
+  (exit with `A`/`B`); `B` is a no-op on the shelf.
+- **Theme (scaffold)**: `theme_load()` reads `system/assets/LeapUI/theme.txt`
+  (assets dir from `GET_CORE_ASSETS_DIRECTORY`, fallback
+  `system/assets/LeapUI` → `HCRTOS/assets/LeapUI`), Slot-style keys
+  `housing`, `recess`, `opening`, `edge` + hex colors. **Current state**:
+  `theme.c` parses the file but rendering still uses the fixed palette in
+  `render.h` (`C_BG*`/`C_BORDER`/`C_HOUSING`...) — `theme_housing()/...` are
+  not wired into the renderer yet.
+- **Persistence + logs**: `last_cart.txt` and `leapui.log` under
+  `system/assets/LeapUI/` (fallback `HCRTOS/assets/LeapUI/`) recording
+  `roms/gba/assets`, `shelf_scan`, `queue_insert`, `ROM/CORE check` and
+  `RUN_EMULATOR ret`.
 
-## SD Card Layout (mới `system`, giữ `HCRTOS` cũ để tương thích)
+## Repository layout
+
+```
+src/leapui.c            retro_init/build_paths + ROM/CORE check + run-game queue
+src/shelf.c             ROM scanning + carousel state
+src/render.c            backdrop/header/footer, banner, box art (thumb_load)
+src/font.c              8x8 bitmap ASCII font (self-contained)
+src/theme.c             theme.txt parser (not yet wired to renderer)
+src/core_api.c          stock Argent-Cores API glue — DO NOT EDIT
+src/frontend_functions.c  stock Argent-Cores loader glue — DO NOT EDIT
+src/fallback_functions.c  RUN_EMULATOR path (dartos.h + core/rom buffers)
+include/                headers incl. bare-metal dirent.h shim + libretro.h
+tools/                  smoke test harness + PNG tools (see "Testing on PC")
+build/                  generated artifacts (gitignored): build/{unix,dartos}
+.github/workflows/      CI: builds dartos + unix, uploads on push/release
+```
+
+## SD card layout
 
 ```
 SD:/
-  ROMS/Game Boy Advance/*.gba          <- scan chính (tối đa 512; trống -> fallback ROMS/)
-  ROMS/Game Boy Advance/.res/*.rgb565  <- thumbnail raw RGB565 (64x64/128x128/160x160/200x200/250x200/196x100...), hiển thị fit giữ tỉ lệ
-  ROMS/LeapUI/leap.ui                  <- copy của leapui.mars (theo yêu cầu /roms/LeapUI/leap.ui)
-  system/Phobos/cores/leapui.mars      <- core mới (make gb300 -> build/dartos/leapui.mars, copy qua đây)
-  system/Phobos/cores/gpSP.mars        <- core chạy game - lấy từ Argent-Cores (bản cũ: HCRTOS/cores/gpSP.hcrtos)
+  ROMS/Game Boy Advance/*.gba          <- main scan (max 512; empty -> fallback ROMS/)
+  ROMS/Game Boy Advance/.res/*.rgb565  <- raw RGB565 box art (64x64/128x128/160x160/
+                                          200x200/250x200/196x100...), fit, no distortion
+  ROMS/LeapUI/leap.ui                  <- copy of leapui.mars (per /roms/LeapUI/leap.ui)
+  system/Phobos/cores/leapui.mars      <- core (make gb300 -> build/dartos/leapui.mars, copy here)
+  system/Phobos/cores/gpSP.mars        <- game core - from Argent-Cores (legacy: HCRTOS/cores/gpSP.hcrtos)
   system/bios/gba_bios.bin
   system/assets/LeapUI/theme.txt, leapui.log, last_cart.txt
   system/saves/*.srm, *.state
-  system/configs/dartos.opt            <- make install tự ghi: hcrtos_core_path="leapui"
+  system/configs/dartos.opt            <- make install writes: hcrtos_core_path="leapui"
   system/logs/Phobos.log
-  # cũ vẫn giữ (tương thích):
+  # legacy kept for compatibility:
   HCRTOS/cores/leapui.mars + .hcrtos
   HCRTOS/assets/LeapUI/theme.txt, leapui.log
 ```
 
-### Ảnh bìa (.res/.rgb565)
+### Box art (.res/.rgb565)
 
-Chuyển ảnh PNG -> RGB565 (cần Pillow: `pip install pillow`); size khớp 1 trong các size `thumb_load` nhận (64/128/160/200 vuông, 250x200, 196x100...) — ảnh hiển thị fit giữ tỉ lệ:
+Convert a PNG to RGB565 (needs Pillow: `pip install pillow`); any size from the
+`thumb_load` list works (64/128/160/200 square, 250x200, 196x100, ...) — art is
+fit into the banner without distortion:
 
 ```bash
 python3 - <<'PY'
-import struct, sys
+import struct
 from PIL import Image
 im = Image.open('label.png').convert('RGB').resize((196, 100))
 with open('label.rgb565', 'wb') as f:
     for r, g, b in im.getdata():
         f.write(struct.pack('<H', ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3)))
 PY
-# bo vao ROMS/Game Boy Advance/.res/<ten-rom>.rgb565 (ten trung ten .gba)
+# drop it at ROMS/Game Boy Advance/.res/<rom-name>.rgb565 (same name as the .gba)
 ```
 
-## Build
+## Building
 
-Cần `frog-toolchain` `mipsel-mti-elf` GCC 16.2 / binutils 2.47 / newlib 4.6 (bare-metal) — chạy `make toolchain` một lần để tải về `./x-tools` (~150 MB, toolchain không commit theo repo). Trên Windows phải chạy qua **WSL** (toolchain là ELF Linux, Git Bash Windows không chạy trực tiếp được):
+Requires the `frog-toolchain` `mipsel-mti-elf` GCC 16.2 / binutils 2.47 /
+newlib 4.6 (bare-metal). Run `make toolchain` once to download it into
+`./x-tools` (~150 MB; the toolchain is **not** committed). On Windows run
+everything through **WSL** (the toolchain binaries are Linux ELF):
 
 ```bash
-# trong WSL Ubuntu, vào thư mục LeapUI:
-cd <thư mục LeapUI>   # ví dụ: cd '/mnt/c/Users/<user>/.../LeapUI'
-
-make pc -j4     # = make platform=pc / platform=unix  -> build/unix/leapui_libretro.so (test trên PC, cần gcc)
-make gb300 -j4  # = make platform=gb300 / platform=dartos -> build/dartos/leapui.mars + leapui.hcrtos (cho GB300/SF2000)
+# inside the LeapUI folder (WSL example: cd '/mnt/c/Users/<user>/.../LeapUI')
+make pc -j4     # = platform=pc / unix      -> build/unix/leapui_libretro.so   (PC test, needs gcc)
+make gb300 -j4  # = platform=gb300 / dartos -> build/dartos/leapui.mars + .hcrtos (device core)
 ```
 
-- `make` (không tham số) tự chọn: có MIPS toolchain chạy được -> build device (`gb300`), không -> build PC.
-- Tất cả artifact nằm trong `build/<platform>/` (không làm bẩn root): `.o` + `.so` ở `build/unix/`, `.o` + `.a` + `core.elf` + `leapui.mars/.hcrtos` ở `build/dartos/`. Copy lên SD: `make install SDROOT=/path/to/sd` (core vào `system/Phobos/cores/` + ghi `system/configs/dartos.opt`), hoặc copy tay `build/dartos/leapui.mars`.
-- `gb300` = `dartos` = cùng một platform: NocturnalRTOS/DartOS chạy chung trên SF2000, GB300, DY19... (chỉ khác joypad/LCD init, OS tự detect lúc runtime nên **1 file core dùng cho cả 3**). `pc` = `unix` (desktop).
-- Object tách riêng theo platform (`build/unix/`, `build/dartos/`) để không lẫn `.o` x86 với MIPS; `make clean` xóa `build/` + artifact cũ còn sót ở root.
-- Test PC nhanh không cần RetroArch: `bash tools/smoke_run.sh` (rebuild rồi nạp `.so` qua frontend libretro tối giản, in log `shelf_scan` của core).
+- `make` (no arguments) auto-detects: MIPS toolchain available → device build
+  (`gb300`), otherwise → PC build.
+- All artifacts live under `build/<platform>/` (root stays clean): `build/unix/`
+  for `.o` + `.so`, `build/dartos/` for `.o` + `.a` + `core.elf` +
+  `leapui.mars/.hcrtos`.
+- `gb300` = `dartos` = one platform: NocturnalRTOS/DartOS runs on SF2000,
+  GB300 and DY19 (only joypad/LCD init differ and the OS detects that at
+  runtime, so **one core file works for all three**). `pc` = `unix` (desktop).
+- Per-platform objects avoid mixing x86 and MIPS `.o` files; `make clean`
+  removes `build/` plus any leftover root artifacts from older Makefiles.
+- No MIPS toolchain handy? `make docker` builds in an alpine container.
 
-Build thủ công như `Argent-Cores` (ít khi cần — `make gb300` làm đúng các bước này, object nằm sẵn trong `build/dartos/`):
+Manual link (rarely needed — `make gb300` does exactly this):
 ```bash
 mipsel-mti-elf-g++ -EL -march=mips32 -msoft-float -e __core_entry__ -T src/core.ld \
   -Wl,--start-group build/dartos/core_api.o build/dartos/frontend_functions.o build/dartos/_libretro_dartos.a \
   -lc -Wl,--end-group -Wl,--gc-sections -z max-page-size=32 -o build/dartos/core.elf
-mipsel-mti-elf-objcopy -O binary -R .MIPS.abiflags -R .note.gnu.build-id -R ".rel*" build/dartos/core.elf build/dartos/leapui.mars
+mipsel-mti-elf-objcopy -O binary -R .MIPS.abiflags -R .note.gnu.build-id -R ".rel*" \
+  build/dartos/core.elf build/dartos/leapui.mars
 cp build/dartos/leapui.mars build/dartos/leapui.hcrtos
 ```
 
-`NocturnalRTOS`/`Argent-Loader`/`Argent-Cores` đều đã cập nhật: `phobos.h` mới dùng `SDCARD_DIRECTORY "/media/mmcblk0p2"` + `SYSTEM_DIRECTORY "/system/bios"` etc, `CORES_DIRECTORY` = `"/media/mmcblk0p2/system/Phobos/cores"` và `*.mars`.
-
-## Cài lên SF2000/GB300/NocturnalRTOS
+## Installing on a device
 
 1. Flash NocturnalRTOS (branch `Nocturnal`).
-2. Build xong, cắm thẻ SD và copy core lên thẻ: `make install SDROOT=/media/<user>/<SD>` (Linux/WSL) — tự copy `build/dartos/leapui.mars` vào `system/Phobos/cores/` + `ROMS/LeapUI/leap.ui` và ghi `system/configs/dartos.opt` (`hcrtos_core_path="leapui"`). Copy tay cũng được: 3 file/core đó.
-3. Đảm bảo có core chạy game: `system/Phobos/cores/gpSP.mars` (lấy từ Argent-Cores) — **thiếu gpSP thì vào game sẽ fail ở `CORE check` trong log**, menu vẫn chạy được.
-4. ROM GBA vào `ROMS/Game Boy Advance/`, thumb tuỳ chọn vào `ROMS/Game Boy Advance/.res/<tên rom>.rgb565`.
-5. Boot — LeapUI quét tối đa 512 ROM, `L/R` (hoặc `LEFT/RIGHT`) duyệt, `A` chọn game qua `RETRO_ENVIRONMENT_RUN_EMULATOR` (`dartos.h` + `game_name_buf`/`core_name_buf` buffers).
+2. Mount the SD card and run `make install SDROOT=/media/<user>/<SD>` — it
+   copies `build/dartos/leapui.mars` to `system/Phobos/cores/` and
+   `ROMS/LeapUI/leap.ui`, and writes `system/configs/dartos.opt`
+   (`hcrtos_core_path="leapui"`). Copying those three files manually works too.
+3. Make sure a game core is present: `system/Phobos/cores/gpSP.mars` (from
+   Argent-Cores). **Without gpSP the game launch fails at the `CORE check`
+   log line** — the menu itself still runs.
+4. Put GBA ROMs in `ROMS/Game Boy Advance/`; box art (optional) in
+   `ROMS/Game Boy Advance/.res/<rom-name>.rgb565`.
+5. Boot — LeapUI scans up to 512 ROMs; `L/R` (or `LEFT/RIGHT`) browses, `A`
+   launches through `RETRO_ENVIRONMENT_RUN_EMULATOR` (`dartos.h` +
+   `game_name_buf`/`core_name_buf` buffers).
 
-## So sánh
+## Testing on PC
 
-|  | FrogUI | Slot | LeapUI (mới) |
+No RetroArch needed:
+
+```bash
+bash tools/smoke_run.sh
+```
+
+This rebuilds both platforms, feeds a few fake ROMs to a minimal libretro
+frontend (`tools/smoke_libretro.c`), exercises a full scan + one `A` press
+(`queue_insert` → `ROM/CORE check` → `WRAP_RUN_GAME`) and renders the final
+frame to `tools/frame_ui.png` (via `tools/rgb565_to_png.py`) so you can eyeball
+the UI. `tools/make_test_thumb.py` generates a fake `.res` box-art file.
+
+## Comparison
+
+|  | FrogUI | Slot | LeapUI |
 |---|---|---|---|
-| Scan | /ROMS/* mọi hệ | /Games/*.gba | /ROMS/Game Boy Advance/*.gba only |
-| UI | list dọc | carousel SlotChrome | carousel viền xanh 200x104 + side 32x64 + 8x8 font + animation |
-| Input | Up/Down, A/B, Select | L/R, Tap/Hold A, MENU | L/R, Tap/Hold A 500ms, SELECT About |
-| Thumb | .res/*.rgb565 + WQW | Labels 196x86 | .res/*.rgb565 mọi size chuẩn, fit giữ tỉ lệ vào banner tỉ lệ sticker GBA 43:22 |
-| Theme | theme.c | System/theme.txt | system/assets/LeapUI/theme.txt (mới) + HCRTOS fallback |
-| Launch | RUN_EMULATOR | mGBA trực tiếp | RUN_EMULATOR core=gpSP (y hệt FrogUI, đã fix `dartos.h` include) |
-| Output | .hcrtos | - | .mars (mới) + .hcrtos (compat) |
+| Scan | /ROMS/* every system | /Games/*.gba | /ROMS/Game Boy Advance/*.gba only |
+| UI | vertical list | carousel chrome | green-accent carousel 200x104 + 32x64 sides + 8x8 font + animation |
+| Input | Up/Down, A/B, Select | L/R, tap/hold A, MENU | L/R, tap/hold A 500ms, SELECT About |
+| Box art | .res/*.rgb565 + WQW | Labels 196x86 | .res/*.rgb565, any standard size, fit in GBA-sticker-ratio banner |
+| Theme | theme.c | System/theme.txt | system/assets/LeapUI/theme.txt + HCRTOS fallback |
+| Launch | RUN_EMULATOR | mGBA directly | RUN_EMULATOR core=gpSP (like FrogUI; `dartos.h` include fixed) |
+| Output | .hcrtos | - | .mars (new) + .hcrtos (compat) |
 
-## Dev notes
+## Development notes
 
-- `src/leapui.c` chứa `retro_init` (build_paths + font_init sau), `shelf.c` scan, `render.c` backdrop/header/footer + center/side + thumb, `font.c` 8x8 bitmap tự làm (không dùng file font ngoài).
-- `fallback_functions.c` `#include "dartos.h"` và gọi `RETRO_ENVIRONMENT_RUN_EMULATOR` (`0x20000|3`) với `core_name_buf`/`game_name_buf` để không rơi vào `SHUTDOWN` (bug cũ).
-- Build: 2 platform chính là `pc` và `gb300` (alias `unix`/`dartos`); mọi output (`.o`, `.a`, `.so`, `core.elf`, `leapui.mars/.hcrtos`) đều trong `build/{unix,dartos}/`, root sạch để public; toolchain path đã quote nên chạy được cả khi đường dẫn có space. `make install SDROOT=...` ghi core + config vào `system/` (layout mới) — không có `DARTOS/` hay `configs/` cũ trong repo public.
-- `core_api.c` / `frontend_functions.c` giữ stock `Argent-Cores` — **đừng sửa** (thay đổi phải kèm thay đổi tương ứng bên loader; mọi thứ tự sửa nên nằm trong core).
-- `include/dirent.h` là shim cho device (`frontend_functions.c` tự implement `readdir` đúng layout shim); build `pc` trên Linux thì tự `#include_next` `dirent.h` thật (layout glibc khác, shim sẽ đọc sai `d_name`).
-- Nhánh build zig/musl đã bỏ: `src/mmap_stub.c` còn nằm lại nhưng **không được build**; `include/reent.h` (stub `struct _reent` cho zig) đã xóa vì đè lên newlib làm `core_api.c` lỗi `redefinition of struct _reent`.
-- Log `system/assets/LeapUI/leapui.log` ghi `roms/gba/assets`, `shelf_scan`, `queue_insert`, `ROM/CORE check`, `RUN_EMULATOR ret` để debug loop. Lưu ý `ROM/CORE check` hiện hardcode path `/media/mmcblk0p2/HCRTOS/cores/gpSP.hcrtos` (bản legacy) — chỉ là log, không chặn launch.
-- Smoke test PC: `tools/smoke_libretro.c` (frontend tối giản) + `tools/smoke_run.sh` (rebuild + chạy, in log `shelf_scan`).
+- `src/leapui.c` holds `retro_init` (build paths + font init), the run-game
+  queue, and the `ROM/CORE check` logs (it checks both
+  `system/Phobos/cores/gpSP.mars` and the legacy `HCRTOS/cores/gpSP.hcrtos`;
+  log only, never blocks launch). The device-side paths default to
+  `/media/mmcblk0p2` when the frontend does not provide directories.
+- `fallback_functions.c` includes `dartos.h` and calls
+  `RETRO_ENVIRONMENT_RUN_EMULATOR` (`0x20000|3`) with
+  `core_name_buf`/`game_name_buf` so the core does not fall into `SHUTDOWN`
+  (old bug).
+- `core_api.c` / `frontend_functions.c` are **stock Argent-Cores** — do not
+  edit them: any API change must be mirrored in the loader, so custom work
+  belongs inside the core itself.
+- `include/dirent.h` is a shim for the device build (`frontend_functions.c`
+  implements `readdir` with that layout); the PC build (`unix`) instead does
+  `#include_next` on the host `<dirent.h>` (glibc layout differs — using the
+  shim on Linux would misread `d_name`).
+- `src/mmap_stub.c` is a leftover from an abandoned zig/musl build path and is
+  **not compiled** by the Makefile.
+- Logs go to `system/assets/LeapUI/leapui.log` (fallback
+  `HCRTOS/assets/LeapUI/`) for debugging boot loops.
 
 ## License
 
-ISC (như Argent-Cores) — xem [LICENSE](LICENSE).
+ISC — see [LICENSE](LICENSE).
