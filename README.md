@@ -193,6 +193,18 @@ the UI. `tools/make_test_thumb.py` generates a fake `.res` box-art file.
 - `leapui.log` is written to `system/logs/` (firmware convention, next to
   `Phobos.log`) for debugging boot loops.
 
+## Credits
+
+- **FrogUI** (Data-Frog-Central) — libretro wrapper + `core_api` + filesystem
+  glue that LeapUI builds on.
+- **Slot** — carousel/slot UX (L/R shelf, insert/eject, theme housing/recess)
+  that inspired the LeapUI shelf.
+- **Desoxyn** — debugging the boot-loop: tracing `R31` (`$ra`) to locate the
+  faulting function in `core.elf` and identifying the core-side cause.
+- **AxelGarciaK (axgdev)** — pointing out `RETRO_ENVIRONMENT_RUN_EMULATOR` +
+  `dartos.h` (why the core fell into `SHUTDOWN`), and steering the build away
+  from the experimental zig/musl path.
+
 ## License
 
 ISC — see [LICENSE](LICENSE).
