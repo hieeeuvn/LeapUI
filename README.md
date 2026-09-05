@@ -20,6 +20,27 @@ make gb300 -j4   # device core   -> build/dartos/leapui.mars  (+ .hcrtos)
 `make gb300` needs the MIPS toolchain — run `make toolchain` once (~150 MB into
 `./x-tools`). On Windows run everything through **WSL**. Full details below.
 
+## Download the core (GitHub Actions)
+
+No toolchain, no build needed — grab the prebuilt device core from CI:
+
+1. Open the repo's **Actions** tab and click the **build-leapui** workflow.
+2. Pick the latest green run (top of the list) and scroll to the **Artifacts** box.
+3. Download the `leapui-<commit-sha>.zip`, which contains:
+   - `leapui.mars` + `leapui.hcrtos` — the **device core** (identical files)
+   - `leapui_libretro.so` — PC test build
+   - `_libretro_dartos.a`, `core.elf.map` — build intermediates
+4. Unzip it and copy `leapui.mars` to the SD card — then follow
+   [Installing on a device](#installing-on-a-device).
+
+Notes:
+
+- A fresh artifact is built on every push to `main`, on pull requests, and on
+  demand via the **Run workflow** button (workflow_dispatch).
+- Downloading artifacts requires a **GitHub login**.
+- When a **Release** is created, `leapui.mars` and `leapui.hcrtos` are also
+  attached directly to the release page — downloadable without an account.
+
 ## Features
 
 - **Library scan** — reads `ROMS/Game Boy Advance/` **recursively** (subfolders
