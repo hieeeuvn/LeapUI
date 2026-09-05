@@ -5,7 +5,7 @@
 #   make sf2000      -> build/sf2000/_libretro_sf2000.a      (legacy, kept for compatibility)
 #   make toolchain   -> download frog-toolchain into ./x-tools (once)
 #   make docker      -> build inside an alpine container (needs docker)
-#   make install     -> copy the core + write config to the SD card (see SDROOT below)
+#   make install     -> copy the core + point the boot core at leapui in system/configs/{Phobos,dartos}.opt
 #   make check       -> check the environment
 #   make clean       -> remove build/
 
@@ -209,32 +209,42 @@ clean:
 	rm -f _libretro_*.a leapui_libretro.so core.elf core.elf.map leapui.hcrtos leapui.mars
 	rm -f src/*.o
 
-# copy the core + config to the SD card
+# copy the core + config to the SD card.
+# NocturnalRTOS boots the core named by hcrtos_core_path in system/configs/Phobos.opt,
+# so install patches that key to "leapui" in both Phobos.opt (new) and dartos.opt (legacy),
+# keeping every other setting; a missing file is created with stock defaults.
 install sdcard: hcrtos
-	@if [ -n "$(SDROOT)" ]; then \
-	  mkdir -p "$(SDROOT)/system/Phobos/cores" "$(SDROOT)/system/configs" "$(SDROOT)/ROMS/LeapUI"; \
-	  cp $(BUILD_DIR)/leapui.mars "$(SDROOT)/system/Phobos/cores/leapui.mars"; \
-	  cp $(BUILD_DIR)/leapui.mars "$(SDROOT)/ROMS/LeapUI/leap.ui"; \
-	  { [ -f "$(SDROOT)/system/configs/dartos.opt" ] && grep -v '^hcrtos_core_path' "$(SDROOT)/system/configs/dartos.opt" || true; \
-	    echo 'hcrtos_core_path = "leapui"'; } > "$(SDROOT)/system/configs/dartos.opt.new"; \
-	  mv "$(SDROOT)/system/configs/dartos.opt.new" "$(SDROOT)/system/configs/dartos.opt"; \
-	  echo "  OK  -> $(SDROOT)/system/Phobos/cores/leapui.mars + system/configs/dartos.opt"; \
-	elif [ -d DARTOS ]; then \
-	  mkdir -p DARTOS/system/configs; \
-	  { [ -f DARTOS/system/configs/dartos.opt ] && grep -v '^hcrtos_core_path' DARTOS/system/configs/dartos.opt || true; \
-	    echo 'hcrtos_core_path = "leapui"'; } > DARTOS/system/configs/dartos.opt.new; \
-	  mv DARTOS/system/configs/dartos.opt.new DARTOS/system/configs/dartos.opt; \
-	  echo "  OK  -> DARTOS/system/configs/dartos.opt"; \
-	else \
-	  echo "  [?] SDROOT not set - e.g. make install SDROOT=/media/<user>/<SD>"; \
-	fi
+	@if [ -n "$(SDROOT)" ]; then ROOT="$(SDROOT)"; \
+	elif [ -d DARTOS ]; then ROOT="DARTOS"; \
+	else echo "  [?] SDROOT not set - e.g. make install SDROOT=/media/<user>/<SD>"; exit 0; fi; \
+	  mkdir -p "$$ROOT/system/Phobos/cores" "$$ROOT/system/configs" "$$ROOT/ROMS/LeapUI"; \
+	  cp $(BUILD_DIR)/leapui.mars "$$ROOT/system/Phobos/cores/leapui.mars"; \
+	  cp $(BUILD_DIR)/leapui.mars "$$ROOT/ROMS/LeapUI/leap.ui"; \
+	  for f in Phobos dartos; do cfg="$$ROOT/system/configs/$$f.opt"; \
+	    if [ -f "$$cfg" ]; then \
+	      { grep -v '^hcrtos_core_path' "$$cfg" || true; echo 'hcrtos_core_path = "leapui"'; } > "$$cfg.tmp"; \
+	    else \
+	      printf '%s\n' 'hcrtos_scaling_mode = "aspect float"' 'hcrtos_mono_audio_enabled = "true"' \
+	                     'hcrtos_brightness_percentage = "100"' \
+	                     'hcrtos_rom_path = "/media/mmcblk0p2/ROMS/menu/m"' \
+	                     'hcrtos_core_path = "leapui"' 'hcrtos_audio_device = "SF2000"' \
+	                     'hcrtos_joypad_device = "SF2000"' 'hcrtos_gfx_custom_x_enabled = "false"' \
+	                     'hcrtos_gfx_custom_y_enabled = "false"' 'hcrtos_gfx_custom_x = "0"' \
+	                     'hcrtos_gfx_custom_y = "0"' 'hcrtos_show_fps_counter = "false"' > "$$cfg.tmp"; \
+	    fi; \
+	    mv "$$cfg.tmp" "$$cfg"; \
+	  done; \
+	  echo "  OK  -> $$ROOT/system/Phobos/cores/leapui.mars"; \
+	  echo "       $$ROOT/ROMS/LeapUI/leap.ui"; \
+	  echo "       $$ROOT/system/configs/{Phobos,dartos}.opt  (hcrtos_core_path=\"leapui\")"
 
 help:
 	@echo "LeapUI - lazy make:"
 	@echo "  make pc           build build/unix/leapui_libretro.so for PC testing (= make unix / platform=pc)"
 	@echo "  make gb300        build build/dartos/leapui.mars + leapui.hcrtos for GB300/SF2000"
 	@echo "                    (= make dartos / platform=gb300; needs the MIPS toolchain)"
-	@echo "  make install      copy core + write config to an SD: make install SDROOT=/path/to/sd"
+	@echo "  make install      copy core + set boot core (Phobos.opt/dartos.opt) on an SD:"
+	@echo "                    make install SDROOT=/path/to/sd"
 	@echo "  make toolchain    download frog-toolchain into ./x-tools (once, ~150MB)"
 	@echo "  make docker       build with docker (no toolchain install needed)"
 	@echo "  make check        check the environment"

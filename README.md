@@ -124,7 +124,8 @@ SD:/
   system/Phobos/cores/gpSP.mars      <- game core, from Argent-Cores (required)
   system/bios/gba_bios.bin
   system/assets/LeapUI/theme.txt     <- theme file (optional)
-  system/configs/dartos.opt          <- hcrtos_core_path = "leapui"
+  system/configs/Phobos.opt          <- boot config: hcrtos_core_path = "leapui"
+  system/configs/dartos.opt          <- legacy copy with the same key
   system/logs/leapui.log             <- written at runtime
 ```
 
@@ -139,12 +140,24 @@ SD:/
    ```
 
    This copies `leapui.mars` to `system/Phobos/cores/` and `ROMS/LeapUI/leap.ui`,
-   and sets `hcrtos_core_path = "leapui"` in `system/configs/dartos.opt`.
-   (The same three steps can be done by hand.)
-3. Put **gpSP** on the card: `system/Phobos/cores/gpSP.mars` from Argent-Cores —
+   and sets the **boot core** in `system/configs/Phobos.opt` (legacy
+   `dartos.opt` too): `hcrtos_core_path = "leapui"`.
+   (The same steps can be done by hand.)
+3. **Boot core**: NocturnalRTOS starts the core named in
+   `system/configs/Phobos.opt` (key `hcrtos_core_path`, stock value `frogui`).
+   `make install` rewrites it to `leapui` while keeping every other setting —
+   or edit it by hand:
+
+   ```ini
+   ; SD:/system/configs/Phobos.opt  (keep all other lines)
+   hcrtos_core_path = "leapui"
+   ```
+
+   Without this, the stock FrogUI frontend boots instead of LeapUI.
+4. Put **gpSP** on the card: `system/Phobos/cores/gpSP.mars` from Argent-Cores —
    the menu runs without it, but launching a game needs it.
-4. Drop GBA ROMs into `ROMS/Game Boy Advance/`. Box art is optional — see below.
-5. Boot the handheld. If a launch fails, check `system/logs/leapui.log`.
+5. Drop GBA ROMs into `ROMS/Game Boy Advance/`. Box art is optional — see below.
+6. Boot the handheld. If a launch fails, check `system/logs/leapui.log`.
 
 ## Box art (.res)
 
