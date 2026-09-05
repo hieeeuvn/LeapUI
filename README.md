@@ -38,8 +38,6 @@ Notes:
 - A fresh artifact is built on every push to `main`, on pull requests, and on
   demand via the **Run workflow** button (workflow_dispatch).
 - Downloading artifacts requires a **GitHub login**.
-- When a **Release** is created, `leapui.mars` and `leapui.hcrtos` are also
-  attached directly to the release page — downloadable without an account.
 
 ## Features
 
