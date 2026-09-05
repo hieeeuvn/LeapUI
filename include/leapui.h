@@ -6,9 +6,6 @@
 #define SCREEN_W 320
 #define SCREEN_H 240
 
-#define LEAPUI_MAX_ROMS 512
-#define LEAPUI_MAX_PATH 512
-
 // Slot-inspired insert/eject timing (seconds)
 #define INSERT_S 0.73f
 #define INSERT_HOLD_S 0.28f

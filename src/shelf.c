@@ -14,29 +14,50 @@ static int cmp_cart(const void *a,const void *b){
     return strcasecmp(ca->name, cb->name);
 }
 
-int shelf_scan(LeapShelf *s, const char *gba_dir){
-    s->count=0;
-    DIR *d=opendir(gba_dir);
-    if(!d) return -1;
+/* Recursively collect *.gba (flat shelf, subfolders included) up to MAX_ROMS total.
+   Entry names are copied BEFORE any nested readdir because the device readdir uses
+   a static buffer. Directories are probed with opendir() (no stat needed). */
+static void scan_dir_r(LeapShelf *s, const char *dir_path, int depth){
+    if(depth > 4) return;
+    DIR *d=opendir(dir_path);
+    if(!d) return;
     struct dirent *e;
-    while((e=readdir(d))!=NULL && s->count < MAX_ROMS){
-        if(e->d_name[0]=='.') continue;
-        // only .gba
-        const char *dot=strrchr(e->d_name,'.');
-        if(!dot) continue;
-        if(strcasecmp(dot,".gba")!=0) continue;
-        LeapCart *c=&s->carts[s->count];
-        snprintf(c->path, sizeof(c->path), "%s/%s", gba_dir, e->d_name);
-        strncpy(c->name, e->d_name, sizeof(c->name)-1);
-        // stem without ext
-        size_t len=strlen(e->d_name);
-        size_t ext=4;
-        size_t slen = len>ext? len-ext : len;
-        strncpy(c->stem, e->d_name, slen);
-        c->stem[slen]=0;
-        s->count++;
+    while((e=readdir(d))!=NULL){
+        if(s->count >= MAX_ROMS) break;
+        if(e->d_name[0]=='.') continue;   // hidden files and .res/
+        char name[256];
+        strncpy(name, e->d_name, sizeof(name)-1); name[sizeof(name)-1]=0;
+        if(strcasecmp(name,"saves")==0 || strcasecmp(name,"save")==0) continue;
+        s->scanned++;
+        const char *dot=strrchr(name,'.');
+        if(dot && strcasecmp(dot,".gba")==0){
+            LeapCart *c=&s->carts[s->count];
+            snprintf(c->path, sizeof(c->path), "%s/%s", dir_path, name);
+            strncpy(c->name, name, sizeof(c->name)-1);
+            // stem without ext
+            size_t len=strlen(name);
+            size_t ext=4;
+            size_t slen = len>ext? len-ext : len;
+            strncpy(c->stem, name, slen);
+            c->stem[slen]=0;
+            s->count++;
+        } else {
+            // recurse into subdirectories (opendir is the is-dir probe)
+            char full[MAX_PATH];
+            snprintf(full, sizeof(full), "%s/%s", dir_path, name);
+            DIR *sub=opendir(full);
+            if(sub){ scan_dir_r(s, full, depth+1); closedir(sub); }
+        }
     }
     closedir(d);
+}
+
+int shelf_scan(LeapShelf *s, const char *gba_dir){
+    s->count=0; s->scanned=0;
+    DIR *probe=opendir(gba_dir);
+    if(!probe) return -1;
+    closedir(probe);
+    scan_dir_r(s, gba_dir, 0);
     qsort(s->carts, s->count, sizeof(LeapCart), cmp_cart);
     s->index=0; s->scroll=0; s->vel=0;
     return s->count;

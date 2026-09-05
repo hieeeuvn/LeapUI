@@ -1,5 +1,6 @@
 # --- build outputs (make pc / make gb300) ---
 build/
+buildtest/
 
 # --- toolchain (tai lai bang: make toolchain) ---
 x-tools/

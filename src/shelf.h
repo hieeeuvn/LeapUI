@@ -2,7 +2,7 @@
 #define LEAP_SHELF_H
 #include <stdbool.h>
 
-#define MAX_ROMS 512
+#define MAX_ROMS 1024  // shelf capacity (subfolders are flattened); each entry ~768 B of static RAM
 #define MAX_PATH 512
 
 typedef struct {
@@ -14,6 +14,7 @@ typedef struct {
 typedef struct {
     LeapCart carts[MAX_ROMS];
     int count;
+    int scanned;    // non-hidden entries examined (diagnostics)
     int index;      // selected
     float scroll;   // smooth scroll position (float index)
     float vel;

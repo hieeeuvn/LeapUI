@@ -2,7 +2,7 @@
  * LeapUI - Minimal GBA-only frontend for NocturnalRTOS / DartOS
  * Inspired by FrogUI (directory / input / libretro wrapper) and Slot (shelf UX).
  *
- * - Scans <ROMS>/Game Boy Advance/*.gba, fallback <ROMS>/ (up to 512)
+ * - Scans <ROMS>/Game Boy Advance/ recursively into subfolders, up to MAX_ROMS (1024)
  * - Horizontal Slot-style carousel: L/R or Left/Right browses, center cart focused
  * - Tap A = resume (gpsp savestate), Hold A 500ms = clean boot
  * - Runs gpsp via DARTOS RETRO_ENVIRONMENT_RUN_EMULATOR
@@ -317,7 +317,7 @@ void retro_init(void){
     if(n<=0){
         shelf_scan(&shelf, roms_path);
     }
-    leapui_log("shelf_scan gba=%s n=%d count=%d", gba_path, n, shelf.count);
+    leapui_log("shelf_scan gba=%s n=%d count=%d scanned=%d", gba_path, n, shelf.count, shelf.scanned);
     // restore last selection
     if(last_cart_stem[0]){
         for(int i=0;i<shelf.count;i++) if(strcmp(shelf.carts[i].stem, last_cart_stem)==0){ shelf_set_index(&shelf,i); break; }
