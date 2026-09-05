@@ -159,8 +159,8 @@ hcrtos: $(TARGET) $(CORE_OBJS)
 	  cp $(BUILD_DIR)/leapui.mars DARTOS/system/Phobos/cores/leapui.mars; \
 	  cp $(BUILD_DIR)/leapui.mars DARTOS/HCRTOS/cores/leapui.mars; \
 	  cp $(BUILD_DIR)/leapui.mars DARTOS/HCRTOS/cores/leapui.hcrtos; \
-	  cp $(BUILD_DIR)/leapui.mars DARTOS/ROMS/LeapUI/leap.ui; \
-	  echo "  INSTALLED -> DARTOS/ (private SD staging)"; \
+	  : > DARTOS/ROMS/LeapUI/leap.ui; \
+	  echo "  INSTALLED -> DARTOS/ (private SD staging; ROMS/LeapUI/leap.ui = 0-byte boot stub)"; \
 	fi
 
 # each .c in src/ -> build/<platform>/<name>.o (never leave .o files inside src/)
@@ -219,7 +219,7 @@ install sdcard: hcrtos
 	else echo "  [?] SDROOT not set - e.g. make install SDROOT=/media/<user>/<SD>"; exit 0; fi; \
 	  mkdir -p "$$ROOT/system/Phobos/cores" "$$ROOT/system/configs" "$$ROOT/ROMS/LeapUI"; \
 	  cp $(BUILD_DIR)/leapui.mars "$$ROOT/system/Phobos/cores/leapui.mars"; \
-	  cp $(BUILD_DIR)/leapui.mars "$$ROOT/ROMS/LeapUI/leap.ui"; \
+	  : > "$$ROOT/ROMS/LeapUI/leap.ui"; \
 	  for f in Phobos dartos; do cfg="$$ROOT/system/configs/$$f.opt"; \
 	    if [ -f "$$cfg" ]; then \
 	      { grep -v '^hcrtos_core_path' "$$cfg" || true; echo 'hcrtos_core_path = "leapui"'; } > "$$cfg.tmp"; \
@@ -235,7 +235,7 @@ install sdcard: hcrtos
 	    mv "$$cfg.tmp" "$$cfg"; \
 	  done; \
 	  echo "  OK  -> $$ROOT/system/Phobos/cores/leapui.mars"; \
-	  echo "       $$ROOT/ROMS/LeapUI/leap.ui"; \
+	  echo "       $$ROOT/ROMS/LeapUI/leap.ui (0-byte boot stub)"; \
 	  echo "       $$ROOT/system/configs/{Phobos,dartos}.opt  (hcrtos_core_path=\"leapui\")"
 
 help:

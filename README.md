@@ -119,7 +119,7 @@ wsl bash -lc 'cd "/mnt/c/Users/<you>/<path>/LeapUI" && make gb300 -j4'
 SD:/
   ROMS/Game Boy Advance/**/*.gba     <- scanned recursively (max 1024)
   ROMS/Game Boy Advance/.res/*.rgb565<- raw RGB565 box art (optional)
-  ROMS/LeapUI/leap.ui                <- copy of leapui.mars
+  ROMS/LeapUI/leap.ui                <- 0-byte boot-rom stub (loader boots LeapUI with it)
   system/Phobos/cores/leapui.mars    <- this core
   system/Phobos/cores/gpSP.mars      <- game core, from Argent-Cores (required)
   system/bios/gba_bios.bin
@@ -139,10 +139,17 @@ SD:/
    make install SDROOT=/mnt/d                 # WSL
    ```
 
-   This copies `leapui.mars` to `system/Phobos/cores/` and `ROMS/LeapUI/leap.ui`,
-   and sets the **boot core** in `system/configs/Phobos.opt` (legacy
-   `dartos.opt` too): `hcrtos_core_path = "leapui"`.
-   (The same steps can be done by hand.)
+   This copies `leapui.mars` to `system/Phobos/cores/`, creates the **0-byte
+   boot-rom stub** `ROMS/LeapUI/leap.ui` that the loader boots LeapUI with (it
+   stays empty on purpose), and sets the **boot core** in
+   `system/configs/Phobos.opt` (legacy `dartos.opt` too):
+   `hcrtos_core_path = "leapui"`. Doing it by hand:
+
+   ```bash
+   cp build/dartos/leapui.mars "/<SD>/system/Phobos/cores/leapui.mars"
+   mkdir -p "/<SD>/ROMS/LeapUI" && : > "/<SD>/ROMS/LeapUI/leap.ui"  # 0-byte stub
+   # then set  hcrtos_core_path = "leapui"  in /<SD>/system/configs/Phobos.opt
+   ```
 3. **Boot core**: NocturnalRTOS starts the core named in
    `system/configs/Phobos.opt` (key `hcrtos_core_path`, stock value `frogui`).
    `make install` rewrites it to `leapui` while keeping every other setting —
